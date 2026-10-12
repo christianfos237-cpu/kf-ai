@@ -1,13 +1,13 @@
 import os
 from flask import Flask, render_template_string, request, jsonify
-from google import genai
+from openai import OpenAI
 
 app = Flask(__name__)
 
-# CONNEXION À GEMINI
-API_KEY = os.environ.get("GEMINI_API_KEY")
+# CONNEXION À OPENAI
+OPENAI_KEY = os.environ.get("OPENAI_API_KEY")
 
-client = genai.Client(api_key=API_KEY) if API_KEY else None
+client = OpenAI(api_key=OPENAI_KEY) if OPENAI_KEY else None
 
 
 # INTERFACE KF AI
@@ -843,13 +843,28 @@ def chat():
     })
 
     try:
-        response = client.models.generate_content(
-            model="gemini-3.8-flash",
-            contents=contents
-        )
+        response = client.chat.completions.create(
+    model="gpt-4.1-mini",
+    messages=[
+        {
+            "role": "system",
+            "content": "Tu es KF AI, un assistant intelligent, utile et précis."
+        },
+        *[
+            {
+                "role": item["role"],
+                "content": item["text"]
+            }
+            for item in history[-12:]
+        ],
+        {
+            "role": "user",
+            "content": message
+        }
+    ]
+)
 
-        answer = response.text
-
+answer = response.choices[0].message.content
         if not answer:
             return jsonify({
                 "error": "Gemini n'a pas renvoyé de réponse. Réessaie."
