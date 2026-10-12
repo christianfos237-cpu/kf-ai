@@ -857,19 +857,35 @@ def chat():
 
         return jsonify({"response": answer})
 
-    except Exception:
+        except Exception as e:
         app.logger.exception("Erreur lors de l'appel à Gemini")
 
-        return jsonify({
-            "error": (
-                "Impossible d'obtenir une réponse de Gemini. "
-                "Réessaie dans quelques instants."
+        erreur = str(e)
+        app.logger.error("Détail Gemini : %s", erreur)
+
+        if "503" in erreur or "UNAVAILABLE" in erreur:
+            message_erreur = (
+                "Google est temporairement surchargé. "
+                "Réessaie dans quelques secondes."
             )
-        }), 502
+        elif "429" in erreur or "RESOURCE_EXHAUSTED" in erreur:
+            message_erreur = (
+                "La limite de requêtes Google est atteinte. "
+                "Attends un peu avant de réessayer."
+            )
+        elif "404" in erreur or "NOT_FOUND" in erreur:
+            message_erreur = (
+                "Le modèle Gemini demandé est indisponible. "
+                "Vérifie le nom du modèle dans app.py."
+            )
+        elif "403" in erreur or "PERMISSION_DENIED" in erreur:
+            message_erreur = (
+                "Google refuse la requête. Vérifie la clé API "
+                "et les autorisations dans Google AI Studio."
+            )
+        else:
+            message_erreur = (
+                "Erreur Gemini : " + erreur[:250]
+            )
 
-
-if __name__ == "__main__":
-    app.run(
-        host="0.0.0.0",
-        port=int(os.environ.get("PORT", 5000))
-)
+        return jsonify({"error": message_erreur}), 502
