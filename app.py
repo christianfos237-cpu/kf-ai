@@ -1,6 +1,12 @@
+import os
 from flask import Flask, render_template_string, request, jsonify
+from google import genai
 
 app = Flask(__name__)
+
+API_KEY = os.environ.get("GEMINI_API_KEY")
+
+client = genai.Client(api_key=API_KEY) if API_KEY else None
 
 HTML = """
 <!DOCTYPE html>
@@ -9,12 +15,9 @@ HTML = """
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#10131a">
-    <title>KF AI — La plus grande</title>
-
+    <title>KF AI</title>
     <style>
-        * {
-            box-sizing: border-box;
-        }
+        * { box-sizing: border-box; }
 
         body {
             margin: 0;
@@ -41,10 +44,7 @@ HTML = """
             border-radius: 13px;
         }
 
-        .brand {
-            font-size: 23px;
-            font-weight: bold;
-        }
+        .brand { font-size: 23px; font-weight: bold; }
 
         .subtitle {
             color: #9da6b8;
@@ -68,10 +68,7 @@ HTML = """
             margin-bottom: 12px;
         }
 
-        .welcome p {
-            color: #aab2c2;
-            line-height: 1.6;
-        }
+        .welcome p { color: #aab2c2; line-height: 1.6; }
 
         #messages {
             display: flex;
@@ -143,14 +140,8 @@ HTML = """
             font-weight: bold;
         }
 
-        #send {
-            background: #7165f5;
-            color: white;
-        }
-
-        #send:disabled {
-            opacity: .5;
-        }
+        #send { background: #7165f5; color: white; }
+        #send:disabled { opacity: .5; }
 
         .note {
             text-align: center;
@@ -160,22 +151,12 @@ HTML = """
         }
 
         @media (max-width: 480px) {
-            main {
-                padding-left: 12px;
-                padding-right: 12px;
-            }
-
-            .welcome {
-                margin-top: 40px;
-            }
-
-            .message {
-                font-size: 15px;
-            }
+            main { padding-left: 12px; padding-right: 12px; }
+            .welcome { margin-top: 40px; }
+            .message { font-size: 15px; }
         }
     </style>
 </head>
-
 <body>
     <header>
         <div class="logo">KF</div>
@@ -188,12 +169,8 @@ HTML = """
     <main>
         <section class="welcome" id="welcome">
             <h1>Que pouvons-nous explorer ?</h1>
-            <p>
-                Pose une question, découvre un concept ou imagine
-                quelque chose de nouveau.
-            </p>
+            <p>Pose une question, découvre un concept ou imagine quelque chose de nouveau.</p>
         </section>
-
         <section id="messages" aria-live="polite"></section>
     </main>
 
@@ -204,7 +181,6 @@ HTML = """
                 rows="1" required></textarea>
             <button id="send" type="submit">➤</button>
         </form>
-
         <div class="note">
             KF AI peut commettre des erreurs. Vérifie les informations importantes.
         </div>
@@ -240,39 +216,31 @@ HTML = """
 
             welcome.style.display = "none";
             addMessage(text, "user");
-
             promptBox.value = "";
             promptBox.style.height = "auto";
             sendButton.disabled = true;
 
             const waiting = addMessage(
-                "KF AI prépare sa réponse...",
+                "KF AI réfléchit...",
                 "assistant"
             );
 
             try {
                 const response = await fetch("/api/chat", {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({ message: text })
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({message: text})
                 });
 
                 const data = await response.json();
 
                 if (!response.ok) {
-                    throw new Error(
-                        data.error || "Une erreur est survenue."
-                    );
+                    throw new Error(data.error || "Erreur inconnue.");
                 }
 
                 waiting.textContent = data.reply;
-
             } catch (error) {
-                waiting.textContent =
-                    "La réponse n'a pas pu être obtenue. " + error.message;
-
+                waiting.textContent = "Erreur : " + error.message;
             } finally {
                 sendButton.disabled = false;
                 promptBox.focus();
@@ -297,14 +265,29 @@ def chat():
     if not message:
         return jsonify({"error": "Écris d'abord un message."}), 400
 
-    return jsonify({
-        "reply": (
-            "Bienvenue sur KF AI ! Ton message a bien été reçu.\n\n"
-            "Notre interface fonctionne, mais le moteur d'intelligence "
-            "artificielle n'est pas encore connecté. Cette première version "
-            "sert à préparer les fondations de notre projet."
+    if not client:
+        return jsonify({
+            "error": "La clé GEMINI_API_KEY n'est pas configurée dans Render."
+        }), 500
+
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=message
         )
-    })
+
+        answer = response.text
+
+        if not answer:
+            answer = "Je n'ai pas pu générer de réponse. Réessaie."
+
+        return jsonify({"reply": answer})
+
+    except Exception as error:
+        app.logger.exception("Erreur lors de l'appel à Gemini")
+        return jsonify({
+            "error": "Impossible d'obtenir une réponse de Gemini. Vérifie les paramètres de l'API et réessaie."
+        }), 502
 
 
 if __name__ == "__main__":
