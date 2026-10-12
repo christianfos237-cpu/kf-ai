@@ -4,249 +4,786 @@ from google import genai
 
 app = Flask(__name__)
 
+# CONNEXION À GEMINI
 API_KEY = os.environ.get("GEMINI_API_KEY")
 
 client = genai.Client(api_key=API_KEY) if API_KEY else None
 
-HTML = """
+
+# INTERFACE KF AI
+HTML = r"""
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#10131a">
-    <title>KF AI</title>
-    <style>
-        * { box-sizing: border-box; }
+<meta charset="UTF-8">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0">
 
-        body {
-            margin: 0;
-            background: #10131a;
-            color: #f5f7fb;
-            font-family: Arial, sans-serif;
-            min-height: 100vh;
-        }
+<title>KF AI — Assistant intelligent</title>
 
-        header {
-            padding: 18px;
-            border-bottom: 1px solid #292e3a;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
+<style>
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
 
-        .logo {
-            background: linear-gradient(135deg, #6d5dfc, #00c9a7);
-            color: white;
-            font-weight: bold;
-            font-size: 21px;
-            padding: 11px;
-            border-radius: 13px;
-        }
+:root {
+    --bg: #101114;
+    --panel: #191a20;
+    --panel2: #22232b;
+    --text: #f4f4f6;
+    --muted: #9b9ca8;
+    --accent: #8b5cf6;
+    --accent2: #6d45dc;
+    --border: #30313b;
+}
 
-        .brand { font-size: 23px; font-weight: bold; }
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100dvh;
+    overflow: hidden;
+}
 
-        .subtitle {
-            color: #9da6b8;
-            font-size: 12px;
-            margin-top: 4px;
-        }
+.app {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
 
-        main {
-            max-width: 850px;
-            margin: auto;
-            padding: 25px 16px 150px;
-        }
+/* EN-TÊTE */
 
-        .welcome {
-            text-align: center;
-            margin: 55px 0 35px;
-        }
+header {
+    height: 70px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(25, 26, 32, 0.96);
+}
 
-        .welcome h1 {
-            font-size: clamp(29px, 7vw, 43px);
-            margin-bottom: 12px;
-        }
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+}
 
-        .welcome p { color: #aab2c2; line-height: 1.6; }
+.logo {
+    width: 43px;
+    height: 43px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #a78bfa, #6d28d9);
+    font-size: 17px;
+    font-weight: 900;
+    box-shadow: 0 4px 18px #8b5cf633;
+}
 
-        #messages {
-            display: flex;
-            flex-direction: column;
-            gap: 18px;
-        }
+.brand-name {
+    font-size: 21px;
+    font-weight: 800;
+    letter-spacing: -0.6px;
+}
 
-        .message {
-            padding: 15px 17px;
-            border-radius: 17px;
-            line-height: 1.65;
-            overflow-wrap: anywhere;
-            white-space: pre-wrap;
-        }
+.brand-name span {
+    color: #a78bfa;
+}
 
-        .user {
-            background: #292f40;
-            align-self: flex-end;
-            max-width: 90%;
-        }
+.status {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+    color: var(--muted);
+}
 
-        .assistant {
-            background: #191e29;
-            border: 1px solid #2b3140;
-            align-self: stretch;
-        }
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #42d392;
+}
 
-        .composer {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            padding: 15px;
-            background: linear-gradient(transparent, #10131a 20%);
-        }
+/* BOUTONS */
 
-        .composer-inner {
-            max-width: 820px;
-            margin: auto;
-            background: #1b202c;
-            border: 1px solid #343b4b;
-            border-radius: 20px;
-            padding: 10px;
-            display: flex;
-            gap: 10px;
-            align-items: flex-end;
-        }
+button {
+    font-family: inherit;
+    cursor: pointer;
+    border: none;
+}
 
-        textarea {
-            flex: 1;
-            min-width: 0;
-            resize: none;
-            max-height: 130px;
-            border: 0;
-            outline: none;
-            background: transparent;
-            color: white;
-            font-size: 16px;
-            padding: 10px;
-            font-family: inherit;
-        }
+.new-chat {
+    padding: 10px 13px;
+    border: 1px solid var(--border);
+    background: var(--panel2);
+    color: var(--text);
+    border-radius: 11px;
+    font-size: 12px;
+    font-weight: 600;
+}
 
-        button {
-            border: 0;
-            cursor: pointer;
-            border-radius: 13px;
-            padding: 12px 15px;
-            font-size: 15px;
-            font-weight: bold;
-        }
+.new-chat:hover {
+    background: #30313b;
+}
 
-        #send { background: #7165f5; color: white; }
-        #send:disabled { opacity: .5; }
+/* ZONE DE CONVERSATION */
 
-        .note {
-            text-align: center;
-            font-size: 11px;
-            color: #8992a5;
-            margin-top: 10px;
-        }
+main {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    scroll-behavior: smooth;
+}
 
-        @media (max-width: 480px) {
-            main { padding-left: 12px; padding-right: 12px; }
-            .welcome { margin-top: 40px; }
-            .message { font-size: 15px; }
-        }
-    </style>
+.content {
+    width: 100%;
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 30px 20px 25px;
+}
+
+.welcome {
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 35px 0 50px;
+}
+
+.welcome-icon {
+    width: 76px;
+    height: 76px;
+    border-radius: 25px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #8b5cf6, #4f46e5);
+    font-size: 34px;
+    margin-bottom: 25px;
+    box-shadow: 0 10px 40px #8b5cf633;
+}
+
+.welcome h1 {
+    font-size: clamp(27px, 5vw, 39px);
+    line-height: 1.2;
+    margin-bottom: 13px;
+    letter-spacing: -1.2px;
+}
+
+.gradient {
+    background: linear-gradient(90deg, #c4b5fd, #818cf8);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.welcome p {
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.7;
+    max-width: 390px;
+}
+
+.suggestions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 34px;
+}
+
+.suggestion {
+    text-align: left;
+    padding: 17px;
+    min-height: 94px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--text);
+    border-radius: 16px;
+    transition: 0.2s;
+}
+
+.suggestion:hover {
+    border-color: #8b5cf6;
+    transform: translateY(-2px);
+}
+
+.suggestion .emoji {
+    font-size: 21px;
+    display: block;
+    margin-bottom: 10px;
+}
+
+.suggestion strong {
+    font-size: 13px;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.suggestion small {
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+/* MESSAGES */
+
+.message {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 27px;
+    align-items: flex-start;
+}
+
+.avatar {
+    width: 35px;
+    height: 35px;
+    flex-shrink: 0;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.user-avatar {
+    background: #343541;
+    border: 1px solid #454652;
+}
+
+.ai-avatar {
+    background: linear-gradient(135deg, #8b5cf6, #4f46e5);
+}
+
+.message-body {
+    min-width: 0;
+    flex: 1;
+    padding-top: 3px;
+}
+
+.message-label {
+    font-size: 12px;
+    font-weight: 700;
+    margin-bottom: 9px;
+}
+
+.message-text {
+    font-size: 14px;
+    line-height: 1.8;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
+
+.user-message .message-text {
+    display: inline-block;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    padding: 12px 15px;
+    border-radius: 5px 16px 16px 16px;
+}
+
+.message-text strong {
+    font-weight: 750;
+}
+
+.message-text code {
+    background: #292a34;
+    padding: 3px 6px;
+    border-radius: 5px;
+    font-family: monospace;
+}
+
+.message-text pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    background: #0c0d11;
+    border: 1px solid var(--border);
+    padding: 14px;
+    margin: 10px 0;
+    border-radius: 12px;
+    font-size: 12px;
+    overflow-x: auto;
+}
+
+.typing {
+    color: var(--muted);
+    font-size: 13px;
+    animation: pulse 1.2s infinite;
+}
+
+@keyframes pulse {
+    50% { opacity: 0.45; }
+}
+
+/* ZONE DE SAISIE */
+
+footer {
+    flex-shrink: 0;
+    padding: 12px 18px 10px;
+    border-top: 1px solid var(--border);
+    background: var(--bg);
+}
+
+.composer {
+    max-width: 820px;
+    margin: 0 auto;
+}
+
+.input-box {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    padding: 10px;
+    border: 1px solid #41414e;
+    background: var(--panel);
+    border-radius: 18px;
+    transition: border-color 0.2s;
+}
+
+.input-box:focus-within {
+    border-color: #8b5cf6;
+    box-shadow: 0 0 0 3px #8b5cf615;
+}
+
+textarea {
+    flex: 1;
+    width: 100%;
+    min-width: 0;
+    max-height: 150px;
+    resize: none;
+    outline: none;
+    border: none;
+    background: transparent;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1.6;
+    padding: 7px 5px;
+}
+
+textarea::placeholder {
+    color: #777886;
+}
+
+.send-btn {
+    width: 43px;
+    height: 43px;
+    flex-shrink: 0;
+    border-radius: 13px;
+    background: var(--accent);
+    color: white;
+    font-size: 19px;
+    font-weight: bold;
+    transition: 0.2s;
+}
+
+.send-btn:hover {
+    background: var(--accent2);
+}
+
+.send-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.footer-note {
+    text-align: center;
+    font-size: 10px;
+    color: #747581;
+    margin-top: 10px;
+    line-height: 1.5;
+}
+
+/* PETITS ÉCRANS */
+
+@media (max-width: 500px) {
+    header {
+        height: 63px;
+        padding: 0 13px;
+    }
+
+    .logo {
+        width: 38px;
+        height: 38px;
+        border-radius: 12px;
+    }
+
+    .brand-name {
+        font-size: 19px;
+    }
+
+    .content {
+        padding: 18px 14px 22px;
+    }
+
+    .welcome {
+        padding: 25px 0;
+    }
+
+    .welcome-icon {
+        width: 65px;
+        height: 65px;
+        border-radius: 21px;
+        font-size: 29px;
+        margin-bottom: 20px;
+    }
+
+    .welcome p {
+        font-size: 13px;
+    }
+
+    .suggestions {
+        gap: 9px;
+        margin-top: 27px;
+    }
+
+    .suggestion {
+        padding: 13px;
+        min-height: 100px;
+        border-radius: 14px;
+    }
+
+    .suggestion strong {
+        font-size: 12px;
+    }
+
+    .suggestion small {
+        font-size: 10px;
+    }
+
+    footer {
+        padding: 10px 10px 8px;
+    }
+
+    .message {
+        gap: 9px;
+        margin-bottom: 23px;
+    }
+
+    .avatar {
+        width: 31px;
+        height: 31px;
+        border-radius: 10px;
+    }
+
+    .message-text {
+        font-size: 13px;
+    }
+
+    .new-chat {
+        padding: 9px 10px;
+    }
+}
+
+@media (max-width: 350px) {
+    .status {
+        display: none;
+    }
+
+    .suggestions {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
 </head>
+
 <body>
+<div class="app">
+
     <header>
-        <div class="logo">KF</div>
-        <div>
-            <div class="brand">KF AI</div>
-            <div class="subtitle">La plus grande commence ici</div>
+        <div class="brand">
+            <div class="logo">KF</div>
+            <div class="brand-name">KF <span>AI</span></div>
         </div>
+
+        <div class="status">
+            <span class="status-dot"></span>
+            Assistant IA
+        </div>
+
+        <button class="new-chat" onclick="newChat()">
+            ＋ Nouveau
+        </button>
     </header>
 
-    <main>
-        <section class="welcome" id="welcome">
-            <h1>Que pouvons-nous explorer ?</h1>
-            <p>Pose une question, découvre un concept ou imagine quelque chose de nouveau.</p>
-        </section>
-        <section id="messages" aria-live="polite"></section>
+    <main id="main">
+        <div class="content" id="content">
+
+            <section class="welcome" id="welcome">
+                <div class="welcome-icon">✦</div>
+
+                <h1>
+                    Bonjour, bienvenue sur<br>
+                    <span class="gradient">KF AI.</span>
+                </h1>
+
+                <p>
+                    Ton assistant intelligent pour apprendre,
+                    créer, programmer et explorer de nouvelles idées.
+                </p>
+
+                <div class="suggestions">
+
+                    <button class="suggestion"
+                    onclick="askSuggestion('Explique-moi un concept scientifique simplement.')">
+                        <span class="emoji">🧠</span>
+                        <strong>Apprendre</strong>
+                        <small>Comprendre des concepts complexes</small>
+                    </button>
+
+                    <button class="suggestion"
+                    onclick="askSuggestion('Aide-moi à écrire un programme informatique.')">
+                        <span class="emoji">💻</span>
+                        <strong>Programmer</strong>
+                        <small>Créer et corriger du code</small>
+                    </button>
+
+                    <button class="suggestion"
+                    onclick="askSuggestion('Aide-moi à apprendre l’anglais avec des exemples.')">
+                        <span class="emoji">🌍</span>
+                        <strong>Apprendre les langues</strong>
+                        <small>Vocabulaire, grammaire et traduction</small>
+                    </button>
+
+                    <button class="suggestion"
+                    onclick="askSuggestion('Propose-moi des idées originales pour un projet.')">
+                        <span class="emoji">✨</span>
+                        <strong>Créer</strong>
+                        <small>Développer de nouvelles idées</small>
+                    </button>
+
+                </div>
+            </section>
+
+            <div id="messages"></div>
+
+        </div>
     </main>
 
-    <section class="composer">
-        <form id="chat-form" class="composer-inner">
-            <textarea id="prompt"
-                placeholder="Pose ta question à KF AI..."
-                rows="1" required></textarea>
-            <button id="send" type="submit">➤</button>
-        </form>
-        <div class="note">
-            KF AI peut commettre des erreurs. Vérifie les informations importantes.
+    <footer>
+        <div class="composer">
+
+            <div class="input-box">
+                <textarea
+                    id="input"
+                    rows="1"
+                    maxlength="12000"
+                    placeholder="Pose ta question à KF AI..."
+                    aria-label="Ton message"
+                ></textarea>
+
+                <button
+                    id="send"
+                    class="send-btn"
+                    onclick="sendMessage()"
+                    aria-label="Envoyer le message"
+                >↑</button>
+            </div>
+
+            <div class="footer-note">
+                KF AI peut parfois se tromper.
+                Vérifie les informations importantes.
+            </div>
+
         </div>
-    </section>
+    </footer>
 
-    <script>
-        const form = document.getElementById("chat-form");
-        const promptBox = document.getElementById("prompt");
-        const messages = document.getElementById("messages");
-        const sendButton = document.getElementById("send");
-        const welcome = document.getElementById("welcome");
+</div>
 
-        function addMessage(text, role) {
-            const div = document.createElement("div");
-            div.className = "message " + role;
-            div.textContent = text;
-            messages.appendChild(div);
-            div.scrollIntoView({ behavior: "smooth", block: "end" });
-            return div;
+<script>
+const input = document.getElementById("input");
+const sendBtn = document.getElementById("send");
+const messages = document.getElementById("messages");
+const main = document.getElementById("main");
+
+let history = [];
+let busy = false;
+
+function escapeHTML(text) {
+    return String(text).replace(/[&<>"']/g, function(c) {
+        return {
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#39;"
+        }[c];
+    });
+}
+
+/* Mise en forme simple et sécurisée des réponses */
+function formatText(text) {
+    let safe = escapeHTML(text);
+
+    safe = safe.replace(
+        /```(?:[a-zA-Z0-9_-]+)?\n?([\s\S]*?)```/g,
+        function(_, code) {
+            return "<pre><code>" + code + "</code></pre>";
+        }
+    );
+
+    safe = safe.replace(
+        /`([^`\n]+)`/g,
+        "<code>$1</code>"
+    );
+
+    safe = safe.replace(
+        /\*\*(.*?)\*\*/g,
+        "<strong>$1</strong>"
+    );
+
+    return safe;
+}
+
+function addMessage(role, text, id = "") {
+    const row = document.createElement("div");
+
+    row.className = "message " +
+        (role === "user" ? "user-message" : "ai-message");
+
+    if (id) row.id = id;
+
+    const avatar = document.createElement("div");
+    avatar.className = "avatar " +
+        (role === "user" ? "user-avatar" : "ai-avatar");
+
+    avatar.textContent = role === "user" ? "Toi" : "KF";
+
+    const body = document.createElement("div");
+    body.className = "message-body";
+
+    const label = document.createElement("div");
+    label.className = "message-label";
+    label.textContent = role === "user" ? "Toi" : "KF AI";
+
+    const content = document.createElement("div");
+    content.className = "message-text";
+
+    if (text) {
+        content.innerHTML = formatText(text);
+    }
+
+    body.appendChild(label);
+    body.appendChild(content);
+
+    row.appendChild(avatar);
+    row.appendChild(body);
+
+    messages.appendChild(row);
+
+    main.scrollTop = main.scrollHeight;
+
+    return content;
+}
+
+function askSuggestion(text) {
+    input.value = text;
+    sendMessage();
+}
+
+async function sendMessage() {
+    const message = input.value.trim();
+
+    if (!message || busy) return;
+
+    busy = true;
+    sendBtn.disabled = true;
+
+    document.getElementById("welcome").style.display = "none";
+
+    addMessage("user", message);
+
+    input.value = "";
+    input.style.height = "auto";
+
+    const loading = addMessage(
+        "assistant",
+        "KF AI prépare sa réponse...",
+        "loading"
+    );
+
+    loading.classList.add("typing");
+
+    try {
+        const response = await fetch("/api/chat", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                message: message,
+                history: history.slice(-12)
+            })
+        });
+
+        const data = await response.json();
+
+        document.getElementById("loading").remove();
+
+        if (!response.ok) {
+            throw new Error(data.error || "Une erreur est survenue.");
         }
 
-        promptBox.addEventListener("input", () => {
-            promptBox.style.height = "auto";
-            promptBox.style.height =
-                Math.min(promptBox.scrollHeight, 130) + "px";
-        });
+        const answer = data.response;
 
-        form.addEventListener("submit", async (event) => {
-            event.preventDefault();
+        addMessage("assistant", answer);
 
-            const text = promptBox.value.trim();
-            if (!text) return;
+        history.push(
+            {role: "user", text: message},
+            {role: "assistant", text: answer}
+        );
 
-            welcome.style.display = "none";
-            addMessage(text, "user");
-            promptBox.value = "";
-            promptBox.style.height = "auto";
-            sendButton.disabled = true;
+        history = history.slice(-20);
 
-            const waiting = addMessage(
-                "KF AI réfléchit...",
-                "assistant"
-            );
+    } catch (error) {
+        const loadingElement = document.getElementById("loading");
 
-            try {
-                const response = await fetch("/api/chat", {
-                    method: "POST",
-                    headers: {"Content-Type": "application/json"},
-                    body: JSON.stringify({message: text})
-                });
+        if (loadingElement) loadingElement.remove();
 
-                const data = await response.json();
+        addMessage(
+            "assistant",
+            "⚠️ " + (error.message ||
+            "Impossible d'obtenir une réponse. Réessaie plus tard.")
+        );
+    }
 
-                if (!response.ok) {
-                    throw new Error(data.error || "Erreur inconnue.");
-                }
+    busy = false;
+    sendBtn.disabled = false;
+    input.focus();
+}
 
-                waiting.textContent = data.reply;
-            } catch (error) {
-                waiting.textContent = "Erreur : " + error.message;
-            } finally {
-                sendButton.disabled = false;
-                promptBox.focus();
-            }
-        });
-    </script>
+function newChat() {
+    history = [];
+    messages.innerHTML = "";
+
+    document.getElementById("welcome").style.display = "flex";
+
+    input.value = "";
+    input.focus();
+}
+
+input.addEventListener("input", function() {
+    this.style.height = "auto";
+    this.style.height = Math.min(this.scrollHeight, 150) + "px";
+});
+
+input.addEventListener("keydown", function(event) {
+    if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        sendMessage();
+    }
+});
+</script>
+
 </body>
 </html>
 """
@@ -259,36 +796,80 @@ def home():
 
 @app.route("/api/chat", methods=["POST"])
 def chat():
-    data = request.get_json(silent=True) or {}
-    message = data.get("message", "").strip()
-
-    if not message:
-        return jsonify({"error": "Écris d'abord un message."}), 400
-
     if not client:
         return jsonify({
-            "error": "La clé GEMINI_API_KEY n'est pas configurée dans Render."
+            "error": "La clé Gemini n'est pas configurée dans Render."
         }), 500
+
+    data = request.get_json(silent=True) or {}
+
+    message = data.get("message", "").strip()
+    history = data.get("history", [])
+
+    if not message:
+        return jsonify({
+            "error": "Écris un message avant de l'envoyer."
+        }), 400
+
+    if len(message) > 12000:
+        return jsonify({
+            "error": "Ton message est trop long."
+        }), 400
+
+    # Conserver le contexte récent de la conversation
+    contents = []
+
+    for item in history[-12:]:
+        if not isinstance(item, dict):
+            continue
+
+        role = item.get("role")
+        text = item.get("text", "")
+
+        if role not in ("user", "assistant"):
+            continue
+
+        if not isinstance(text, str) or not text.strip():
+            continue
+
+        contents.append({
+            "role": "model" if role == "assistant" else "user",
+            "parts": [{"text": text[:12000]}]
+        })
+
+    contents.append({
+        "role": "user",
+        "parts": [{"text": message}]
+    })
 
     try:
         response = client.models.generate_content(
             model="gemini-3.8-flash",
-            contents=message
+            contents=contents
         )
 
         answer = response.text
 
         if not answer:
-            answer = "Je n'ai pas pu générer de réponse. Réessaie."
+            return jsonify({
+                "error": "Gemini n'a pas renvoyé de réponse. Réessaie."
+            }), 502
 
-        return jsonify({"reply": answer})
+        return jsonify({"response": answer})
 
-    except Exception as error:
+    except Exception:
         app.logger.exception("Erreur lors de l'appel à Gemini")
+
         return jsonify({
-            "error": "Impossible d'obtenir une réponse de Gemini. Vérifie les paramètres de l'API et réessaie."
+            "error": (
+                "Impossible d'obtenir une réponse de Gemini. "
+                "Réessaie dans quelques instants."
+            )
         }), 502
 
 
 if __name__ == "__main__":
-    app.run()
+    app.run(
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", 5000))
+)
