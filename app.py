@@ -796,111 +796,45 @@ def home():
 
 @app.route("/api/chat", methods=["POST"])
 def chat():
+
     if not client:
         return jsonify({
-            "error": "La clé Gemini n'est pas configurée dans Render."
+            "error": "Clé OpenAI non configurée."
         }), 500
 
     data = request.get_json(silent=True) or {}
 
     message = data.get("message", "").strip()
-    history = data.get("history", [])
 
     if not message:
         return jsonify({
-            "error": "Écris un message avant de l'envoyer."
+            "error": "Message vide."
         }), 400
-
-    if len(message) > 12000:
-        return jsonify({
-            "error": "Ton message est trop long."
-        }), 400
-
-    # Conserver le contexte récent de la conversation
-    contents = []
-
-    for item in history[-12:]:
-        if not isinstance(item, dict):
-            continue
-
-        role = item.get("role")
-        text = item.get("text", "")
-
-        if role not in ("user", "assistant"):
-            continue
-
-        if not isinstance(text, str) or not text.strip():
-            continue
-
-        contents.append({
-            "role": "model" if role == "assistant" else "user",
-            "parts": [{"text": text[:12000]}]
-        })
-
-    contents.append({
-        "role": "user",
-        "parts": [{"text": message}]
-    })
 
     try:
         response = client.chat.completions.create(
-    model="gpt-4.1-mini",
-    messages=[
-        {
-            "role": "system",
-            "content": "Tu es KF AI, un assistant intelligent, utile et précis."
-        },
-        *[
-            {
-                "role": item["role"],
-                "content": item["text"]
-            }
-            for item in history[-12:]
-        ],
-        {
-            "role": "user",
-            "content": message
-        }
-    ]
-)
+            model="gpt-4.1-mini",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "Tu es KF AI, un assistant intelligent, précis et utile."
+                },
+                {
+                    "role": "user",
+                    "content": message
+                }
+            ]
+        )
 
-answer = response.choices[0].message.content
-        if not answer:
-            return jsonify({
-                "error": "Gemini n'a pas renvoyé de réponse. Réessaie."
-            }), 502
+        answer = response.choices[0].message.content
 
-        return jsonify({"response": answer})
+        return jsonify({
+            "response": answer
+        })
 
-        except Exception as e:
-        app.logger.exception("Erreur lors de l'appel à Gemini")
+    except Exception as e:
+        app.logger.exception("Erreur OpenAI")
 
-        erreur = str(e)
-        app.logger.error("Détail Gemini : %s", erreur)
-
-        if "503" in erreur or "UNAVAILABLE" in erreur:
-            message_erreur = (
-                "Google est temporairement surchargé. "
-                "Réessaie dans quelques secondes."
-            )
-        elif "429" in erreur or "RESOURCE_EXHAUSTED" in erreur:
-            message_erreur = (
-                "La limite de requêtes Google est atteinte. "
-                "Attends un peu avant de réessayer."
-            )
-        elif "404" in erreur or "NOT_FOUND" in erreur:
-            message_erreur = (
-                "Le modèle Gemini demandé est indisponible. "
-                "Vérifie le nom du modèle dans app.py."
-            )
-        elif "403" in erreur or "PERMISSION_DENIED" in erreur:
-            message_erreur = (
-                "Google refuse la requête. Vérifie la clé API "
-                "et les autorisations dans Google AI Studio."
-            )
-        else:
-            message_erreur = (
-                "Erreur Gemini : " + erreur[:250]
-            )
-
-        return jsonify({"error": message_erreur}), 502
+        return jsonify({
+            "error": str(e)
+        }), 502
